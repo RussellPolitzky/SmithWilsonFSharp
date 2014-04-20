@@ -5,6 +5,8 @@ open NUnit.Framework
 open System
 open SmithWilson
 open Rates
+open Tenor
+open Quotes
 open System.IO
 open ArrayExtensions
 open LoadMarketData
@@ -118,3 +120,59 @@ let ``should be able to price all instruments back exactly``()=
 
     let maxDifference = abs ((recoveredMarketVector - (vector (List.ofSeq m))).Maximum())
     maxDifference |> should be (lessThan 1e-11)
+
+
+[<Test>]  
+let ``should be able to get flows for zero quote``()=
+    let basis    = 365
+    let baseDate = DateTime(2011, 02, 10)
+    let quote    = Zero({EndTerm=Day(1); Rate = 0.0528})
+    let { MarketPrice = marketPrice ; Flows = flows} = getFlowsForQuote basis quote baseDate
+    marketPrice |> should equal 1.0
+    fst flows.Head |> should (equalWithin 1e-12) 0.002739726027397
+    snd flows.Head |> should (equalWithin 1e-12) 1.000144657534250
+
+let compareTuple (tpl1:(float * float)) (tpl2:(float * float)) =
+    fst tpl1 |> should (equalWithin 1e-12) (fst tpl2)
+    snd tpl1 |> should (equalWithin 1e-12) (snd tpl2)
+
+
+[<Test>]  
+let ``should be able to get flows for forward quote``()=
+    let expected = 
+           [
+                (0.076712328767123, -1.000000000000000)
+                (0.328767123287671,  1.014115068493150)
+           ]
+    let basis    = 365
+    let baseDate = DateTime(2011, 02, 10)
+    let quote    = Forward({StartTerm=Month(1); EndTerm=Month(4); Rate = 0.0560})
+    let { MarketPrice = marketPrice ; Flows = flows} = getFlowsForQuote basis quote baseDate
+    marketPrice |> should equal 0.0
+    compareTuple expected.[0] flows.[0]
+    compareTuple expected.[1] flows.[1]
+
+
+[<Test>]  
+let ``should be able to get flows for swap quote``()=
+    let expected = 
+        [
+            0.243835616438356, 0.015898082191781
+            0.495890410958904, 0.016433972602740
+            0.747945205479452, 0.016433972602740
+            1.000000000000000, 0.016433972602740
+            1.246575342465750, 0.016076712328767
+            1.498630136986300, 0.016433972602740
+            1.750684931506850, 0.016433972602740
+            2.002739726027400, 1.016433972602740
+        ]
+
+    let basis    = 365
+    let baseDate = DateTime(2011, 02, 10)
+    let quote    = Swap({EndTerm=Year(2); Rate = 0.0652})
+    let { MarketPrice = marketPrice ; Flows = flows} = getFlowsForQuote basis quote baseDate
+    marketPrice |> should equal 1.0    
+    expected 
+    |> Seq.zip flows 
+    |> Seq.iter (fun (exp, actual) -> compareTuple exp actual)
+

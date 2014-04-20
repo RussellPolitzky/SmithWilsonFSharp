@@ -73,8 +73,11 @@
   <ItemGroup>
     <Content Include="AsciiChars.txt" />
     <None Include="packages.config" />
+    <Compile Include="StringUtils.fs" />
     <Compile Include="Array.fs" />
     <Compile Include="TimedFunction.fs" />
+    <Compile Include="Tenor.fs" />
+    <Compile Include="Quotes.fs" />
     <Compile Include="MathKernelLibrary.fs" />
     <Compile Include="Plot.fs" />
     <Compile Include="Rates.fs" />
