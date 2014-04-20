@@ -8,6 +8,10 @@ open Rates
 open System.IO
 open ArrayExtensions
 open LoadMarketData
+open MathNet.Numerics
+open MathNet.Numerics.LinearAlgebra
+open MathNet.Numerics.LinearAlgebra.Double
+open MathNet.Numerics.LinearAlgebra.Double.Vector
 
 
 [<Test>]  
@@ -72,3 +76,31 @@ let ``should be able to build 2D array from 1D Array``()=
     output.GetLength(0) |> should equal 2
     output.GetLength(1) |> should equal 2
     output |> should equal expected 
+
+
+[<Test>]  
+let ``should be able to price all instruments back exactly``()=
+    let α       = 0.1                                       // Mean reversion parameter controls rate at which curve reverts to UFR.
+    let UFR     = 0.055                                     // Ultimate Forward Rate expressed in NACC
+    let m, U, C = loadCurveInputs "..\sheets\ZaInputs.csv"  // Get market data.
+    // Where:
+    //
+    // m is the market price vector
+    // U is the vector of all cash flow dates
+    // C is the cash flow matrix corresponding to m and U
+
+    let Τ = U  // Get the discount factors at all of cash flow dates.
+    
+    // Build curve and get discount factors for the nodes.
+    let discountFactors = (PtSmithWilson α UFR m C U Τ).Column 1
+    let pricedBack      = (matrix C) * discountFactors
+
+    // If we price back exactly then we should recover the market price vector 
+    // Since Smith Wilson is prefect fit, we expect to get back the market
+    // price vector to a high degree of precision.
+    pricedBack 
+    |> Seq.zip (vector (List.ofSeq m))  
+    |> Seq.iter (fun (curvePrice, marketPrice) ->  curvePrice |> should (equalWithin 1e-11) marketPrice)
+    
+    
+
