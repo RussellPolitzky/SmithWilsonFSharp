@@ -77,9 +77,7 @@ let ``should be able to build 2D array from 1D Array``()=
     output.GetLength(0) |> should equal 2
     output.GetLength(1) |> should equal 2
     output |> should equal expected 
-
-
-
+    
 
 [<Test>]  
 let ``should be able to price all instruments back exactly``()=
@@ -88,7 +86,7 @@ let ``should be able to price all instruments back exactly``()=
     // 
     // C * d = m 
     //
-    // Where:
+    // Where :
     //
     // C is the cashflow matrix
     // d is a vector of discount factors supplied by the Smith-Wilson curve
@@ -114,13 +112,9 @@ let ``should be able to price all instruments back exactly``()=
     let discountFactors = (PtSmithWilson α UFR m C U Τ).Column 1
     let recoveredMarketVector = (matrix C) * discountFactors
 
-    // If we price back exactly then we should recover the market price vector 
+    // If we price back exactly then we should recover the market price vector. 
     // Since Smith Wilson is prefect fit, we expect to get back the market
     // price vector to a high degree of precision.
 
     let maxDifference = abs ((recoveredMarketVector - (vector (List.ofSeq m))).Maximum())
     maxDifference |> should be (lessThan 1e-11)
-
-    
-    
-
