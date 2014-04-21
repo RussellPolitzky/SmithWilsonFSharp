@@ -2,9 +2,13 @@
 
 module Array2D = 
     /// Generates 2D indexes for use with 2D arrays and matrices
-    let geneRatesIndexes noRows noColumns = 
+    let generatesIndexes noRows noColumns = 
         [| for i = 0 to noRows-1 do for j = 0 to noColumns-1 do yield i,j |]
 
+    /// Converts a given 2D array into a list of lists.
+    let toListOfLists (array:_[,]) = 
+        [0..array.GetUpperBound(0)] 
+        |> List.map (fun row -> array.[row,*] |> List.ofArray) // Note the slicer notation here.
 
 module Array =
     /// Builds a 2D array from a 1D array given the required

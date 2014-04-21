@@ -62,7 +62,7 @@ let ``02 should be able to match EIOPA sample 2 rate``()=
 let ``03 should be able to generate indexes for use with 2D arrays and matrices``()=
     let expected = [ (0,0) ; (0,1) ; (1,0) ; (1,1) ]
     
-    let indexes = Array2D.geneRatesIndexes 2 2 |> List.ofArray
+    let indexes = Array2D.generatesIndexes 2 2 |> List.ofArray
     expected 
     |> List.zip indexes 
     |> List.iter  (fun (e, a) -> a |> should equal e)
@@ -279,3 +279,16 @@ let ``11 should generate market vectors and matrices as per original sheet``()=
     Ua |> Seq.zip Ue |> Seq.iter(fun (ua, ue) -> ua |> should (equalWithin 1e-12) ue)
     Ca|> arrayShouldEqual 1e-12 (array2D Ce) // Ce is a list of lists of floats
 
+
+[<Test>]  
+let ``12 should be able to convert 2d array to list of lists``()=
+    let sampleListOfLists = 
+        [
+            [1.0;2.0]
+            [3.0;4.0]
+        ]
+
+    let input       = array2D sampleListOfLists
+    let listOfLists = input |> Array2D.toListOfLists
+
+    listOfLists |> should equal listOfLists
