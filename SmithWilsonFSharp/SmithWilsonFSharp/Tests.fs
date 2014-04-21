@@ -10,6 +10,7 @@ open Quotes
 open System.IO
 open ArrayExtensions
 open LoadMarketData
+open TestUtils
 open MathKernelLibrary
 open MathNet.Numerics
 open MathNet.Numerics.LinearAlgebra
@@ -120,12 +121,7 @@ let ``05 should be able to price all instruments back exactly``()=
 
     let maxDifference = abs ((recoveredMarketVector - (vector (List.ofSeq m))).Maximum())
     maxDifference |> should be (lessThan 1e-11)
-
-
-let compareTuple (tpl1:(float * float)) (tpl2:(float * float)) =
-    fst tpl1 |> should (equalWithin 1e-12) (fst tpl2)
-    snd tpl1 |> should (equalWithin 1e-12) (snd tpl2)
-
+    
 
 [<Literal>]
 let basis = 365
@@ -208,12 +204,13 @@ let ``09 should be able to get all accrual factors from quotes``()=
 [<Test>]  
 let ``10 should be able to get market data from quotes``()=
 
-    let expectedCfMatrix = array2D
-                               [
-                                   [1.0001446575342465; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0]
-                                   [0.0; -1.0; 0.0; 1.0141150684931506; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0 ;0.0]
-                                   [0.0; 0.0; 0.015898082191780821; 0.0; 0.016433972602739724; 0.016433972602739724; 0.016433972602739724; 0.016076712328767121; 0.016433972602739724; 0.016433972602739724; 1.0164339726027398]
-                               ]
+    let expectedCfMatrix = 
+        array2D
+           [
+               [1.0001446575342465; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0]
+               [0.0; -1.0; 0.0; 1.0141150684931506; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0 ;0.0]
+               [0.0; 0.0; 0.015898082191780821; 0.0; 0.016433972602739724; 0.016433972602739724; 0.016433972602739724; 0.016076712328767121; 0.016433972602739724; 0.016433972602739724; 1.0164339726027398]
+           ]
 
     let expectedAccrualFactors = 
         [|
@@ -241,7 +238,6 @@ let ``10 should be able to get market data from quotes``()=
 
 // ZA quotes for swap curve on 2011-02-10 from Paul Du Preez's thesis
 let zaBaseDate = DateTime(2011, 02, 10)
-
 let zaQuotes = [|
         Zero   ({                       EndTerm = Day  ( 1); Rate = 5.280 / 100.0 })
         Zero   ({                       EndTerm = Month( 1); Rate = 5.470 / 100.0 })
@@ -274,17 +270,6 @@ let zaQuotes = [|
         Swap   ({                       EndTerm = Year (30); Rate = 8.150 / 100.0 })
     |]
 
-let arrayShouldEqual (precision:float) (a1:float[,]) (a2:float[,])  =
-    let a1d1 = a1.GetLength(0)
-    let a2d1 = a2.GetLength(0)
-    let a1d2 = a1.GetLength(1)
-    let a2d2 = a2.GetLength(1)
-    a1d1 |> should equal a2d1 
-    a1d2 |> should equal a2d2
-    for i in 0..(a1d1-1) do
-        for j in 0..(a1d2-1) do
-            a1.[i,j] |> should (equalWithin precision) a2.[i,j]
-
 
 [<Test>]  
 let ``11 should generate market vectors and matrices as per original sheet``()=
@@ -292,4 +277,5 @@ let ``11 should generate market vectors and matrices as per original sheet``()=
     let ma, Ua, Ca = buildMarketDataVectorsAndCfMatrixFromQuotes basis zaBaseDate zaQuotes
     ma |> should equal me
     Ua |> Seq.zip Ue |> Seq.iter(fun (ua, ue) -> ua |> should (equalWithin 1e-12) ue)
-    Ca|> arrayShouldEqual 1e-12 (array2D Ce) 
+    Ca|> arrayShouldEqual 1e-12 (array2D Ce) // Ce is a list of lists of floats
+

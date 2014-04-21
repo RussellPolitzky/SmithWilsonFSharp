@@ -83,6 +83,7 @@
     <Compile Include="Rates.fs" />
     <Compile Include="SmithWilson.fs" />
     <Compile Include="LoadMarketData.fs" />
+    <Compile Include="TestUtils.fs" />
     <Compile Include="Tests.fs" />
     <None Include="SmithWilsonEIOPA1.fsx" />
     <None Include="SmithWilsonEIOPA2.fsx" />
