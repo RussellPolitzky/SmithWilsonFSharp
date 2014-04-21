@@ -85,6 +85,7 @@
     <Compile Include="LoadMarketData.fs" />
     <Compile Include="TestUtils.fs" />
     <Compile Include="Tests.fs" />
+    <Compile Include="ZaCurveQuotes.fs" />
     <None Include="SmithWilsonEIOPA1.fsx" />
     <None Include="SmithWilsonEIOPA2.fsx" />
     <None Include="ZaSample.fsx" />
