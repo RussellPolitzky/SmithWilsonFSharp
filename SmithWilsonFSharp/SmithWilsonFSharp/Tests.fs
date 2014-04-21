@@ -17,8 +17,9 @@ open MathNet.Numerics.LinearAlgebra.Double
 open MathNet.Numerics.LinearAlgebra.Double.Vector
 
 
+
 [<Test>]  
-let ``should be able to match EIOPA sample 1 rate``()=
+let ``01 should be able to match EIOPA sample 1 rate``()=
     let α = 0.1                    // Mean reversion parameter controls rate at which curve reverts to UFR.
     let UFR = Math.Log(1.0 + 0.042)  // Ultimate Forward Rate expressed in NACC (converted from 0.042 NACA)
     let m = [| 1.0; 1.0; 1.0; 1.0 |] // market prices
@@ -38,7 +39,7 @@ let ``should be able to match EIOPA sample 1 rate``()=
 
 
 [<Test>]  
-let ``should be able to match EIOPA sample 2 rate``()=
+let ``02 should be able to match EIOPA sample 2 rate``()=
     let α = 0.1                      // Mean reversion parameter controls rate at which curve reverts to UFR.
     let UFR = Math.Log(1.0 + 0.042)  // Ultimate Forward Rate expressed in NACC (converted from 0.042 NACA)
     let m = [| 1.0; 1.0; 1.0; 1.0 |] // market prices
@@ -58,7 +59,7 @@ let ``should be able to match EIOPA sample 2 rate``()=
 
     
 [<Test>]  
-let ``should be able to generate indexes for use with 2D arrays and matrices``()=
+let ``03 should be able to generate indexes for use with 2D arrays and matrices``()=
     let expected = [ (0,0) ; (0,1) ; (1,0) ; (1,1) ]
     
     let indexes = Array2D.geneRatesIndexes 2 2 |> List.ofArray
@@ -68,7 +69,7 @@ let ``should be able to generate indexes for use with 2D arrays and matrices``()
 
 
 [<Test>]  
-let ``should be able to build 2D array from 1D Array``()=
+let ``04 should be able to build 2D array from 1D Array``()=
     let input   = [| 1;2;3;4 |]
     let columns = 2
     let rows    = 2
@@ -82,7 +83,7 @@ let ``should be able to build 2D array from 1D Array``()=
     
 
 [<Test>]  
-let ``should be able to price all instruments back exactly``()=
+let ``05 should be able to price all instruments back exactly``()=
 
     // If the curve is a perfect fit then:
     // 
@@ -122,42 +123,43 @@ let ``should be able to price all instruments back exactly``()=
     maxDifference |> should be (lessThan 1e-11)
 
 
-[<Test>]  
-let ``should be able to get flows for zero quote``()=
-    let basis    = 365
-    let baseDate = DateTime(2011, 02, 10)
-    let quote    = Zero({EndTerm=Day(1); Rate = 0.0528})
-    let { MarketPrice = marketPrice ; Flows = flows} = getFlowsForQuote basis quote baseDate
-    marketPrice |> should equal 1.0
-    fst flows.Head |> should (equalWithin 1e-12) 0.002739726027397
-    snd flows.Head |> should (equalWithin 1e-12) 1.000144657534250
-
 let compareTuple (tpl1:(float * float)) (tpl2:(float * float)) =
     fst tpl1 |> should (equalWithin 1e-12) (fst tpl2)
     snd tpl1 |> should (equalWithin 1e-12) (snd tpl2)
 
+[<Literal>]
+let basis = 365
+let baseDate = DateTime(2011, 02, 10)
+
 
 [<Test>]  
-let ``should be able to get flows for forward quote``()=
+let ``06 should be able to get flows for zero quote``()=
+    let quote    = Zero({EndTerm=Day(1); Rate = 0.0528})
+    let { MarketPrice = marketPrice ; Flows = flows} = getFlowsForQuote basis baseDate quote 
+    marketPrice |> should equal 1.0
+    fst flows.[0] |> should (equalWithin 1e-12) 0.002739726027397
+    snd flows.[0] |> should (equalWithin 1e-12) 1.000144657534250
+
+
+[<Test>]  
+let ``07 should be able to get flows for forward quote``()=
     let expected = 
            [
                 (0.076712328767123, -1.000000000000000)
                 (0.328767123287671,  1.014115068493150)
            ]
-    let basis    = 365
-    let baseDate = DateTime(2011, 02, 10)
     let quote    = Forward({StartTerm=Month(1); EndTerm=Month(4); Rate = 0.0560})
-    let { MarketPrice = marketPrice ; Flows = flows} = getFlowsForQuote basis quote baseDate
+    let { MarketPrice = marketPrice ; Flows = flows} = getFlowsForQuote basis baseDate quote 
     marketPrice |> should equal 0.0
     compareTuple expected.[0] flows.[0]
     compareTuple expected.[1] flows.[1]
 
 
 [<Test>]  
-let ``should be able to get flows for swap quote``()=
+let ``08 should be able to get flows for swap quote``()=
     let expected = 
-        [
-            0.243835616438356, 0.015898082191781
+        [|
+            0.243835616438356, 0.015898082191781 // These from the original Excel model.
             0.495890410958904, 0.016433972602740
             0.747945205479452, 0.016433972602740
             1.000000000000000, 0.016433972602740
@@ -165,14 +167,27 @@ let ``should be able to get flows for swap quote``()=
             1.498630136986300, 0.016433972602740
             1.750684931506850, 0.016433972602740
             2.002739726027400, 1.016433972602740
-        ]
-
-    let basis    = 365
-    let baseDate = DateTime(2011, 02, 10)
+        |]
     let quote    = Swap({EndTerm=Year(2); Rate = 0.0652})
-    let { MarketPrice = marketPrice ; Flows = flows} = getFlowsForQuote basis quote baseDate
+    let { MarketPrice = marketPrice ; Flows = flows} = getFlowsForQuote basis baseDate quote 
     marketPrice |> should equal 1.0    
     expected 
-    |> Seq.zip flows 
-    |> Seq.iter (fun (exp, actual) -> compareTuple exp actual)
+    |> Array.zip flows 
+    |> Array.iter (fun (exp, actual) -> compareTuple exp actual)
 
+
+[<Test>]  
+let ``09 should be able to get all accrual factors from quotes``()=
+    let flows = getFlowsForQuotes 
+                        basis 
+                        baseDate 
+                        [|
+                            Zero   ({ EndTerm   = Day  (1)                  ; Rate = 0.0528 })
+                            Forward({ StartTerm = Month(1); EndTerm=Month(4); Rate = 0.0560 })
+                            Swap   ({ EndTerm   = Year (2)                  ; Rate = 0.0652 })
+                        |]
+
+
+       
+
+    ()
