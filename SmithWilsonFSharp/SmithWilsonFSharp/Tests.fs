@@ -17,7 +17,6 @@ open MathNet.Numerics.LinearAlgebra.Double
 open MathNet.Numerics.LinearAlgebra.Double.Vector
 
 
-
 [<Test>]  
 let ``01 should be able to match EIOPA sample 1 rate``()=
     let α = 0.1                    // Mean reversion parameter controls rate at which curve reverts to UFR.
@@ -127,6 +126,7 @@ let compareTuple (tpl1:(float * float)) (tpl2:(float * float)) =
     fst tpl1 |> should (equalWithin 1e-12) (fst tpl2)
     snd tpl1 |> should (equalWithin 1e-12) (snd tpl2)
 
+
 [<Literal>]
 let basis = 365
 let baseDate = DateTime(2011, 02, 10)
@@ -176,18 +176,120 @@ let ``08 should be able to get flows for swap quote``()=
     |> Array.iter (fun (exp, actual) -> compareTuple exp actual)
 
 
+let sampleQuotes = 
+    [|
+        Zero   ({ EndTerm   = Day  (1)                  ; Rate = 0.0528 })
+        Forward({ StartTerm = Month(1); EndTerm=Month(4); Rate = 0.0560 })
+        Swap   ({ EndTerm   = Year (2)                  ; Rate = 0.0652 })
+    |]
+
+
 [<Test>]  
 let ``09 should be able to get all accrual factors from quotes``()=
-    let flows = getFlowsForQuotes 
-                        basis 
-                        baseDate 
-                        [|
-                            Zero   ({ EndTerm   = Day  (1)                  ; Rate = 0.0528 })
-                            Forward({ StartTerm = Month(1); EndTerm=Month(4); Rate = 0.0560 })
-                            Swap   ({ EndTerm   = Year (2)                  ; Rate = 0.0652 })
-                        |]
+    let expected = 
+        [|
+          0.0027397260273972603 // 1D
+          0.076712328767123292  // 1M
+          0.24383561643835616   // 3M
+          0.32876712328767121   // 4M
+          0.49589041095890413   // 6M
+          0.74794520547945209   // 9M
+          1.0                   // 12M
+          1.2465753424657535    // 15M
+          1.4986301369863013    // 18M
+          1.7506849315068493    // 21M
+          2.0027397260273974    // 2Y
+        |]
+    let flows                = getFlowsForQuotes       basis baseDate sampleQuotes
+    let sortedAccrualFactors = getSortedAccrualFactors flows
+    sortedAccrualFactors |> should equal expected
 
 
-       
+[<Test>]  
+let ``10 should be able to get market data from quotes``()=
 
-    ()
+    let expectedCfMatrix = array2D
+                               [
+                                   [1.0001446575342465; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0]
+                                   [0.0; -1.0; 0.0; 1.0141150684931506; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0 ;0.0]
+                                   [0.0; 0.0; 0.015898082191780821; 0.0; 0.016433972602739724; 0.016433972602739724; 0.016433972602739724; 0.016076712328767121; 0.016433972602739724; 0.016433972602739724; 1.0164339726027398]
+                               ]
+
+    let expectedAccrualFactors = 
+        [|
+          0.0027397260273972603 // 1D
+          0.076712328767123292  // 1M
+          0.24383561643835616   // 3M
+          0.32876712328767121   // 4M
+          0.49589041095890413   // 6M
+          0.74794520547945209   // 9M
+          1.0                   // 12M
+          1.2465753424657535    // 15M
+          1.4986301369863013    // 18M
+          1.7506849315068493    // 21M
+          2.0027397260273974    // 2Y
+        |]
+
+    let expectedMarketPrices = [ 1.0; 0.0; 1.0 ]
+    
+    let marketPrices, sortedAccrualFactors, cfMatrix = buildMarketDataVectorsAndCfMatrixFromQuotes basis baseDate sampleQuotes
+     
+    marketPrices         |> should equal expectedMarketPrices
+    sortedAccrualFactors |> should equal expectedAccrualFactors
+    cfMatrix             |> should equal expectedCfMatrix
+
+
+// ZA quotes for swap curve on 2011-02-10 from Paul Du Preez's thesis
+let zaBaseDate = DateTime(2011, 02, 10)
+
+let zaQuotes = [|
+        Zero   ({                       EndTerm = Day  ( 1); Rate = 5.280 / 100.0 })
+        Zero   ({                       EndTerm = Month( 1); Rate = 5.470 / 100.0 })
+        Zero   ({                       EndTerm = Month( 3); Rate = 5.575 / 100.0 })
+        Forward({StartTerm = Month( 1); EndTerm = Month( 4); Rate = 5.600 / 100.0 })
+        Forward({StartTerm = Month( 2); EndTerm = Month( 5); Rate = 5.650 / 100.0 })
+        Forward({StartTerm = Month( 3); EndTerm = Month( 6); Rate = 5.650 / 100.0 })
+        Forward({StartTerm = Month( 4); EndTerm = Month( 7); Rate = 5.710 / 100.0 })
+        Forward({StartTerm = Month( 5); EndTerm = Month( 8); Rate = 5.760 / 100.0 })
+        Forward({StartTerm = Month( 6); EndTerm = Month( 9); Rate = 5.850 / 100.0 })
+        Forward({StartTerm = Month( 7); EndTerm = Month(10); Rate = 5.890 / 100.0 })
+        Forward({StartTerm = Month( 8); EndTerm = Month(11); Rate = 6.010 / 100.0 })
+        Forward({StartTerm = Month( 9); EndTerm = Month(12); Rate = 6.160 / 100.0 })
+        Forward({StartTerm = Month(12); EndTerm = Month(15); Rate = 6.620 / 100.0 })
+        Forward({StartTerm = Month(15); EndTerm = Month(18); Rate = 7.060 / 100.0 })
+        Forward({StartTerm = Month(18); EndTerm = Month(21); Rate = 7.500 / 100.0 })
+        Swap   ({                       EndTerm = Year ( 2); Rate = 6.520 / 100.0 })
+        Swap   ({                       EndTerm = Year ( 3); Rate = 7.130 / 100.0 })
+        Swap   ({                       EndTerm = Year ( 4); Rate = 7.550 / 100.0 })
+        Swap   ({                       EndTerm = Year ( 5); Rate = 7.850 / 100.0 })
+        Swap   ({                       EndTerm = Year ( 6); Rate = 8.060 / 100.0 })
+        Swap   ({                       EndTerm = Year ( 7); Rate = 8.210 / 100.0 })
+        Swap   ({                       EndTerm = Year ( 8); Rate = 8.310 / 100.0 })
+        Swap   ({                       EndTerm = Year ( 9); Rate = 8.380 / 100.0 })
+        Swap   ({                       EndTerm = Year (10); Rate = 8.420 / 100.0 })
+        Swap   ({                       EndTerm = Year (12); Rate = 8.460 / 100.0 })
+        Swap   ({                       EndTerm = Year (15); Rate = 8.450 / 100.0 })
+        Swap   ({                       EndTerm = Year (20); Rate = 8.370 / 100.0 })
+        Swap   ({                       EndTerm = Year (25); Rate = 8.290 / 100.0 })
+        Swap   ({                       EndTerm = Year (30); Rate = 8.150 / 100.0 })
+    |]
+
+let arrayShouldEqual (precision:float) (a1:float[,]) (a2:float[,])  =
+    let a1d1 = a1.GetLength(0)
+    let a2d1 = a2.GetLength(0)
+    let a1d2 = a1.GetLength(1)
+    let a2d2 = a2.GetLength(1)
+    a1d1 |> should equal a2d1 
+    a1d2 |> should equal a2d2
+    for i in 0..(a1d1-1) do
+        for j in 0..(a1d2-1) do
+            a1.[i,j] |> should (equalWithin precision) a2.[i,j]
+
+
+[<Test>]  
+let ``11 should generate market vectors and matrices as per original sheet``()=
+    let me, Ue, Ce = loadCurveInputs "..\sheets\ZaInputs.csv"  // Get market data.
+    let ma, Ua, Ca = buildMarketDataVectorsAndCfMatrixFromQuotes basis zaBaseDate zaQuotes
+    ma |> should equal me
+    Ua |> Seq.zip Ue |> Seq.iter(fun (ua, ue) -> ua |> should (equalWithin 1e-12) ue)
+    Ca|> arrayShouldEqual 1e-12 (array2D Ce) 
